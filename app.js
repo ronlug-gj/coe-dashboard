@@ -1,4 +1,7 @@
-/* COE Monitor – dashboard prototype. Plain JS, no build step. */
+/* COE Monitor – dashboard prototype. Plain JS, bundled with Vite. */
+import "./styles.css";
+import { TIERS, FISCAL_YEARS, COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, PENDING, CLINICS, TIER_REQ, TIER_MIN, FACTS } from "./data.js";
+import { CLINIC_WORKS } from "./works.js";
 
 // ---------- Helpers ----------
 const $ = (s, el = document) => el.querySelector(s);

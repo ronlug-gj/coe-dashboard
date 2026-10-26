@@ -1,5 +1,5 @@
 // Imported from the user-provided works register. Preserve source wording and missing values.
-const CLINIC_WORKS = [
+export const CLINIC_WORKS = [
   {
     "id": 1,
     "clinic": "Joint",

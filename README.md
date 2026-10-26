@@ -1,0 +1,68 @@
+# COE Monitor
+
+An initial design for the COE (Center of Excellence) dashboard: a web prototype for tracking the clinics working toward Center of Excellence status at ศูนย์การแพทย์กาญจนาภิเษก (Golden Jubilee Medical Center).
+
+## Overview
+
+COE Monitor shows where each clinic stands on the COE tier ladder and what it still needs to move up:
+
+| Tier | Name |
+| --- | --- |
+| AOI | Area of Interest |
+| dGJCOE | Developing GJCOE |
+| GJCOE | GJCOE |
+| iGJCOE | International GJCOE |
+
+The prototype has these views:
+
+- **Project overview** (`#overview`): project KPIs, growth charts that compare new COEs with the yearly target, and a heatmap of audit results by clinic and criterion.
+- **All clinics** (`#clinics`): every clinic with its current tier, entry year and how many criteria it has passed, has not yet met, or is waiting on data. You can filter, search and sort the list.
+- **Clinic detail** (`#clinic/<id>`): the clinic's evaluation history and its results on each criterion.
+- **Clinic works** (`#clinic/<id>/<evaluation>/works`): the clinic's CQI, R2R/research and innovation works.
+
+The data covers Thai fiscal years 2568–2569. A Thai fiscal year runs from ต.ค. (October) to ก.ย. (September). Pick the year with the selector in the top bar.
+
+This is a design prototype, not a production system. It has no backend: all data is in static JS files.
+
+## Project structure
+
+```
+index.html      Page shell (sidebar, top bar, drawer)
+app.js          App entry: routing and rendering of every view
+data.js         Tiers, audit criteria, clinics, facts and evaluations
+works.js        Works register (CQI, research, innovations) per clinic
+styles.css      All styles
+logo.svg        Medical center logo
+vite.config.js  Vite configuration
+```
+
+To update the dashboard's content, edit `data.js` and `works.js`.
+
+## Installation
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 20.19+ or 22.12+
+- [pnpm](https://pnpm.io/installation)
+
+### Setup
+
+```sh
+git clone <repository-url>
+cd coe-dashboard
+pnpm install
+```
+
+### Commands
+
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Start the dev server with hot reload (http://localhost:5173) |
+| `pnpm build` | Build the production site into `dist/` |
+| `pnpm preview` | Serve the built `dist/` locally to check it |
+
+## Deployment
+
+Run `pnpm build` and upload the contents of `dist/` to any static web host. The build uses relative asset paths, so it also works when served from a subfolder.
+
+Opening `index.html` directly from disk does not work, because browsers block module scripts loaded from `file://`. Use `pnpm dev` or `pnpm preview` instead.

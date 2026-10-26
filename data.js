@@ -180,3 +180,5 @@ CLINICS.forEach((c) => {
     metrics: { ...c.metrics }, facts: JSON.parse(JSON.stringify(c.facts)),
   }];
 });
+
+export { TIERS, FISCAL_YEARS, COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, PENDING, CLINICS, TIER_REQ, TIER_MIN, FACTS };
