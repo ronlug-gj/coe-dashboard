@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { CLINICS } from "../data.js";
+import { CLINICS } from "../dataset.js";
 import { clinicPageUrl, selectedEvaluation } from "../lib.js";
 import { Icon, TierBadge } from "./common.jsx";
 import { EvaluationBody, EvaluationSelectors } from "./Evaluation.jsx";

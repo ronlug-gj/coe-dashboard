@@ -1,4 +1,4 @@
-import { TIERS, CRITERIA, STATUS } from "../data.js";
+import { TIERS, CRITERIA, STATUS } from "../dataset.js";
 
 export function TierBadge({ tier, size = "" }) {
   const T = TIERS[tier];

@@ -1,6 +1,6 @@
 /* COE Monitor – dashboard prototype. React, bundled with Vite. */
 import { useEffect, useState } from "react";
-import { FISCAL_YEARS, CLINICS } from "./data.js";
+import { FISCAL_YEARS, CLINICS, IS_DEMO, AS_OF } from "./dataset.js";
 import { inScope } from "./lib.js";
 import Drawer from "./components/Drawer.jsx";
 import Overview from "./views/Overview.jsx";
@@ -103,7 +103,10 @@ export default function App() {
 
         <div className="main">
           <header className="topbar">
-            <div className="crumbs">{crumbs}</div>
+            <div className="crumbs">
+              {crumbs}
+              {IS_DEMO && <span className="pill warning" title="ข้อมูลตัวอย่างสำหรับสาธิต ไม่ใช่ผลการประเมินจริง">ข้อมูลจำลอง · ณ {AS_OF.label}</span>}
+            </div>
             <label className="fy" hidden={isClinicPage}>
               ปีงบประมาณ
               <select value={fy} onChange={(e) => changeFy(+e.target.value)}>

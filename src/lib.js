@@ -1,10 +1,16 @@
 /* Shared, framework-free helpers for the COE Monitor views. */
-import { CRITERIA, CLINICS, TIER_REQ, TIER_MIN } from "./data.js";
+import { CRITERIA, CLINICS, TIER_REQ, TIER_MIN } from "./dataset.js";
 
 export const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 export const MONTHS = ["ต.ค.", "พ.ย.", "ธ.ค.", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย."];
-export const isCOE = (c) => c.tier >= 2; // GJCOE ขึ้นไป
 export const inScope = (fy) => CLINICS.filter((c) => c.joinFy <= fy);
+
+// Fiscal year a clinic first reached GJCOE or above (null if it hasn't).
+export const coeSinceFy = (c) => c.history.find((h) => h.tier >= 2)?.fy ?? null;
+// Clinics that were COE (GJCOE ขึ้นไป) by the end of fiscal year fy.
+export const coeBy = (fy) => CLINICS.filter((c) => coeSinceFy(c) !== null && coeSinceFy(c) <= fy);
+// Clinics promoted to a higher tier than their entry tier by fiscal year fy.
+export const promotedBy = (fy) => CLINICS.filter((c) => c.history.some((h) => h.fy <= fy && h.tier > c.history[0].tier));
 
 // Per-clinic criteria summary
 export function critSummary(c) {

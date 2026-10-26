@@ -1,4 +1,4 @@
-import { TIERS, CRITERIA, STATUS, CLINICS } from "../data.js";
+import { TIERS, CRITERIA, STATUS, CLINICS } from "../dataset.js";
 import { critSummary } from "../lib.js";
 import { Pill } from "./common.jsx";
 

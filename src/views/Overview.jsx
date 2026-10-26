@@ -1,6 +1,6 @@
 import { Fragment } from "react";
-import { TIERS, FISCAL_YEARS, COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, CLINICS, TIER_REQ } from "../data.js";
-import { pct, MONTHS, isCOE, inScope, critSummary, tierStatus } from "../lib.js";
+import { TIERS, FISCAL_YEARS, COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, CLINICS, TIER_REQ, AS_OF } from "../dataset.js";
+import { pct, MONTHS, inScope, coeSinceFy, coeBy, promotedBy, critSummary, tierStatus } from "../lib.js";
 import { Icon, TierBadge } from "../components/common.jsx";
 
 // ---------- KPI cards ----------
@@ -14,7 +14,7 @@ function KpiHistory({ fy, kpi, threshold, current }) {
       <div className="kpi-history-years">
         {years.map((year) => {
           const value = year === fy ? current.value : kpi === "established"
-            ? CLINICS.filter((c) => c.joinFy === year && c.history[0].tier >= 2).length
+            ? CLINICS.filter((c) => coeSinceFy(c) === year).length
             : KPI_HISTORY[year]?.[kpi];
           const target = kpi === "established" ? COE_TARGET[year] : threshold;
           const status = year === fy ? current.status : value == null || target == null ? "W" : value >= target ? "P" : value > 0 ? "H" : "F";
@@ -58,8 +58,8 @@ const metric = (k) => (c) => (c.metrics[k] === null || c.metrics[k] === undefine
 const atLeast = (k, min) => (c) => (metric(k)(c) === null ? null : c.metrics[k] >= min);
 
 function Stats({ fy }) {
-  const coe = inScope(fy).filter(isCOE);
-  const newCoe = coe.filter((c) => c.joinFy === fy).length;
+  const coe = coeBy(fy);
+  const newCoe = coe.filter((c) => coeSinceFy(c) === fy).length;
   const target = COE_TARGET[fy] || 0;
   const cumTarget = FISCAL_YEARS.filter((y) => y <= fy).reduce((s, y) => s + (COE_TARGET[y] || 0), 0);
   const ok = newCoe >= target;
@@ -98,15 +98,22 @@ function AreaChart({ fy }) {
   const months = [];
   FISCAL_YEARS.filter((y) => y <= fy).forEach((year) => MONTHS.forEach((mName, mi) => {
     const yr = String((mi < 3 ? year - 1 : year) % 100).padStart(2, "0");
+    // Stop at the dataset's "today" instead of drawing flat future months.
+    if (AS_OF && year === AS_OF.fy && mi > AS_OF.month) return;
     months.push({ fy: year, mi, label: `${mName} ${yr}` });
   }));
+  const labelEvery = months.length > 24 ? 6 : 3; // months between x-axis labels; wider spacing for long ranges
   const counts = months.map((mo) => TIERS.map((t) => CLINICS.filter((c) =>
     c.tier === t.id && (c.joinFy < mo.fy || (c.joinFy === mo.fy && c.joinMonth <= mo.mi))).length));
   const totals = counts.map((r) => r.reduce((a, b) => a + b, 0));
-  const max = Math.max(4, Math.ceil(Math.max(...totals) / 2) * 2);
-
   const w = 760, h = 240, pl = 30, pr = 12, pt = 16, pb = 34;
   const x = (i) => pl + (i * (w - pl - pr)) / (months.length - 1);
+  const last = totals.length - 1;
+  // A short final fiscal year puts its "ปีงบ" label next to the total label; add headroom so they don't collide.
+  const crowded = x(last) - x(months.findIndex((mo) => mo.fy === months[last].fy)) < 120;
+  const max = crowded
+    ? Math.ceil((Math.max(...totals) + 2) / 4) * 4
+    : Math.max(4, Math.ceil(Math.max(...totals) / 2) * 2);
   const y = (v) => h - pb - (v / max) * (h - pt - pb);
 
   const grid = [];
@@ -121,13 +128,12 @@ function AreaChart({ fy }) {
     const bot = lower.map((v, i) => `${x(i)},${y(v)}`).reverse().join(" ");
     return <polygon key={t.id} points={`${top} ${bot}`} fill={t.color} fillOpacity="0.85"><title>{t.code}</title></polygon>;
   });
-  const last = totals.length - 1;
 
   return (
     <section className="card span-7">
       <header className="card-head"><div>
         <h3>จำนวนศูนย์ในโครงการรายเดือน</h3>
-        <p>จำแนกตามระดับปัจจุบัน · ต.ค. {(FISCAL_YEARS[0] - 1) % 100} – ก.ย. {fy % 100}</p>
+        <p>จำแนกตามระดับปัจจุบัน · ต.ค. {(FISCAL_YEARS[0] - 1) % 100} – {months[last].label}</p>
       </div></header>
       <svg className="chart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
         {grid.map((v) => (
@@ -140,7 +146,7 @@ function AreaChart({ fy }) {
         <polyline points={totals.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" stroke="#17212f" strokeWidth="1.5" />
         {months.map((mo, i) => (
           <Fragment key={i}>
-            {mo.mi % 3 === 0 && <text x={x(i)} y={h - pb + 16} className={`axis-label ${mo.mi === 0 ? "strong" : ""}`} textAnchor="middle">{mo.label}</text>}
+            {mo.mi % labelEvery === 0 &&<text x={x(i)} y={h - pb + 16} className={`axis-label ${mo.mi === 0 ? "strong" : ""}`} textAnchor="middle">{mo.label}</text>}
             {mo.mi === 0 && i > 0 && <line x1={x(i)} x2={x(i)} y1={pt} y2={h - pb} className="fy-line" />}
             {mo.mi === 0 && <text x={x(i) + 4} y={pt + 8} className="axis-label">ปีงบ {mo.fy}</text>}
           </Fragment>
@@ -160,6 +166,8 @@ function BarChart({ fy }) {
   const w = 420, h = 240, pl = 30, pt = 20, pb = 34;
   const y = (v) => h - pb - (v / max) * (h - pt - pb);
   const bw = (w - pl) / years.length;
+  // Narrow bars (many fiscal years) can't fit clinic names or target labels; those move into hover titles.
+  const roomy = bw >= 120;
 
   const grid = [];
   for (let v = 0; v <= max; v++) grid.push(v);
@@ -185,10 +193,13 @@ function BarChart({ fy }) {
             if (!n) return null;
             const base = acc;
             acc += n;
+            const joined = CLINICS.filter((c) => c.joinFy === year && c.tier === t.id);
             return (
               <Fragment key={t.id}>
-                <rect x={x0} y={y(base + n)} width={bwi} height={y(base) - y(base + n)} fill={t.color}><title>{t.code}: {n} ศูนย์</title></rect>
-                {CLINICS.filter((c) => c.joinFy === year && c.tier === t.id).map((c, j) => (
+                <rect x={x0} y={y(base + n)} width={bwi} height={y(base) - y(base + n)} fill={t.color}>
+                  <title>{t.code}: {n} ศูนย์{!roomy && ` (${joined.map((c) => c.name).join(", ")})`}</title>
+                </rect>
+                {roomy && joined.map((c, j) => (
                   <text key={c.id} x={x0 + bwi / 2} y={(y(base + j) + y(base + j + 1)) / 2 + 4} className="seg-label" textAnchor="middle">{c.name}</text>
                 ))}
               </Fragment>
@@ -198,8 +209,14 @@ function BarChart({ fy }) {
           return (
             <Fragment key={year}>
               {segments}
-              <line x1={x0 - 8} x2={x0 + bwi + 8} y1={y(tg)} y2={y(tg)} className="target-line" />
-              <text x={x0 + bwi + 10} y={y(tg) + 4} className="axis-label">เป้า COE {tg}</text>
+              {roomy ? (
+                <>
+                  <line x1={x0 - 8} x2={x0 + bwi + 8} y1={y(tg)} y2={y(tg)} className="target-line" />
+                  <text x={x0 + bwi + 10} y={y(tg) + 4} className="axis-label">เป้า COE {tg}</text>
+                </>
+              ) : (
+                <line x1={x0 - 8} x2={x0 + bwi + 8} y1={y(tg)} y2={y(tg)} className="target-line"><title>เป้า COE {tg}</title></line>
+              )}
               <text x={x0 + bwi / 2} y={y(acc) - 6} className="bar-label strong" textAnchor="middle">{acc}</text>
               <text x={x0 + bwi / 2} y={h - 12} className={`axis-label ${year === fy ? "strong" : ""}`} textAnchor="middle">ปีงบ {year}</text>
             </Fragment>
@@ -305,11 +322,12 @@ function Heatmap({ fy, hmClinic, onHmClinic, onOpenClinic }) {
 // ---------- Overview ----------
 export default function Overview({ fy, hmClinic, onHmClinic, onOpenClinic }) {
   const scope = inScope(fy);
+  const promoted = promotedBy(fy).length;
   return (
     <>
       <div className="page-head"><div>
         <h1>ภาพรวมโครงการ</h1>
-        <p>ปีงบประมาณ {fy} · {scope.length} ศูนย์ในโครงการ · COE (GJCOE ขึ้นไป) {scope.filter(isCOE).length} ศูนย์ · ยังไม่มีศูนย์ที่เลื่อนระดับ</p>
+        <p>ปีงบประมาณ {fy} · {scope.length} ศูนย์ในโครงการ · COE (GJCOE ขึ้นไป) {coeBy(fy).length} ศูนย์ · {promoted ? `เลื่อนระดับแล้ว ${promoted} ศูนย์` : "ยังไม่มีศูนย์ที่เลื่อนระดับ"}</p>
       </div></div>
       <h2 className="section-title">ตัวชี้วัดโครงการ</h2>
       <Stats fy={fy} />

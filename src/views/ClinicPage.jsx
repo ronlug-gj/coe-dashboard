@@ -1,5 +1,4 @@
-import { TIERS, CRITERIA, STATUS, CLINICS } from "../data.js";
-import { CLINIC_WORKS } from "../works.js";
+import { TIERS, CRITERIA, STATUS, CLINICS, CLINIC_WORKS } from "../dataset.js";
 import { pct, critSummary, selectedEvaluation, clinicPageUrl } from "../lib.js";
 import { Pill, SegBar, TierBadge } from "../components/common.jsx";
 import { EvaluationBody, EvaluationSelectors } from "../components/Evaluation.jsx";

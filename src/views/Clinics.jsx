@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { TIERS, CRITERIA } from "../data.js";
+import { TIERS, CRITERIA } from "../dataset.js";
 import { inScope, critSummary } from "../lib.js";
 import { SegBar, TierBadge } from "../components/common.jsx";
 

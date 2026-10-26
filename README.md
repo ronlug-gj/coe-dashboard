@@ -31,6 +31,7 @@ index.html                  HTML shell; React mounts into #root
 vite.config.js              Vite configuration
 src/
   main.jsx                  Entry point
+  dataset.js                Single data entry point for the app (real or demo data)
   App.jsx                   Layout (sidebar, top bar), hash routing, fiscal-year and drawer state
   lib.js                    Shared calculations (criteria summaries, tier status, URLs)
   data.js                   Tiers, audit criteria, clinics, facts and evaluations
@@ -41,6 +42,9 @@ src/
     common.jsx              Tier badge, pill, icons, criteria bar
     Evaluation.jsx          Evaluation selectors and evaluation detail, shared by drawer and clinic page
     Drawer.jsx              Clinic quick-view drawer
+  demo/
+    data.js                 Dummy พ.ค. 2573 dataset (see "Demo data")
+    works.js                Dummy works register matching the demo clinics
   views/
     Overview.jsx            Project overview: KPI cards, charts, heatmap
     Clinics.jsx             Clinic list with filters and sorting
@@ -73,6 +77,14 @@ pnpm install
 | `pnpm dev` | Start the dev server with hot reload (http://localhost:5173) |
 | `pnpm build` | Build the production site into `dist/` |
 | `pnpm preview` | Serve the built `dist/` locally to check it |
+| `pnpm dev:demo` | Start the dev server with the dummy demo data (see below) |
+| `pnpm build:demo` | Build the site with the dummy demo data into `dist/` |
+
+### Demo data (พ.ค. 2573)
+
+`src/demo/` holds **dummy data** that shows the dashboard as it might look in พ.ค. 2573 (fiscal year 2573, month 8): 13 clinics, fiscal years 2568–2573, several dated evaluations per clinic, tier promotions, KPI history and a works register. It is invented for demos and is not real evaluation data. In demo mode the top bar shows a "ข้อมูลจำลอง" badge.
+
+Demo mode is chosen at build time (`--mode demo`). `vite.config.js` points the `@data` and `@works` imports at either the real files or `src/demo/`, so each build contains only one dataset. In `src/demo/data.js` you only write each evaluation's statuses, facts and metrics; the criteria texts, tier history and KPI history are derived from them.
 
 ## Deployment
 

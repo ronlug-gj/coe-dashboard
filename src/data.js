@@ -12,6 +12,9 @@ const TIERS = [
 
 const FISCAL_YEARS = [2568, 2569];
 
+// The dataset's "today" as { fy, month, label }; null = data runs to the end of the last fiscal year.
+const AS_OF = null;
+
 // Target number of newly established COE (GJCOE ขึ้นไป) per fiscal year: 2 ในปีแรก จากนั้นปีละ 1
 const COE_TARGET = { 2568: 2, 2569: 1, 2570: 1, 2571: 1, 2572: 1 };
 
@@ -181,4 +184,4 @@ CLINICS.forEach((c) => {
   }];
 });
 
-export { TIERS, FISCAL_YEARS, COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, PENDING, CLINICS, TIER_REQ, TIER_MIN, FACTS };
+export { AS_OF, TIERS, FISCAL_YEARS,COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, PENDING, CLINICS, TIER_REQ, TIER_MIN, FACTS };
