@@ -20,6 +20,7 @@
   --t1: #7fb5f0;
   --t2: #2b74d1;
   --t3: #0b3a82;
+  --tn: #d5d9df;
   --radius: 10px;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
 }
@@ -114,6 +115,7 @@ svg { fill: currentColor; }
 .tier-badge.t1 { background: #dcebfc; color: #154a8a; }
 .tier-badge.t2 { background: var(--t2); }
 .tier-badge.t3 { background: var(--t3); }
+.tier-badge.tn { background: #f7f8fa; color: #6b7280; box-shadow: none; outline: 1px dashed #b8bec7; outline-offset: -1px; }
 
 .pill {
   display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px;
@@ -172,6 +174,7 @@ svg { fill: currentColor; }
 .legend-row span { display: inline-flex; align-items: center; gap: 6px; }
 .sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .sw.t0 { background: var(--t0); } .sw.t1 { background: var(--t1); } .sw.t2 { background: var(--t2); } .sw.t3 { background: var(--t3); }
+.sw.tn { background: var(--tn); }
 .sw.plan-target { background: #e6edf7; box-shadow: inset 0 0 0 1px #b9cbe5; }
 .sw.plan-actual { background: var(--t2); }
 
@@ -428,11 +431,24 @@ li.unmet .ci { background: var(--danger-soft); color: var(--danger); }
 .meter i { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--text); border-radius: 1px; }
 .chart { width: 100%; height: auto; display: block; }
 .fy-line { stroke: var(--border-strong); stroke-dasharray: 3 3; }
+
+/* Area chart drill-down */
+.chart-hit { fill: transparent; }
+.chart-hit:hover { fill: rgba(15, 91, 181, 0.08); }
+.chart-hit.drillable { cursor: zoom-in; }
+.axis-label.fy-link { fill: var(--primary); cursor: zoom-in; text-decoration: underline dotted; }
+.axis-label.fy-link:hover, .axis-label.fy-link:focus { fill: var(--t3); font-weight: 600; outline: none; }
+.drill { display: flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
+.drill button { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+.drill button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.drill button:disabled { color: var(--faint); cursor: default; }
+.drill b { min-width: 64px; text-align: center; }
 .target-line { stroke: var(--danger); stroke-width: 2; stroke-dasharray: 5 3; }
 .seg-label { font-size: 11px; fill: #fff; font-weight: 600; }
 .sw.target { background: none; border-top: 2px dashed var(--danger); border-radius: 0; height: 0; width: 14px; }
 .legend-row.tight { margin-top: 0; }
 .mini-stats { grid-template-columns: repeat(4, 1fr); }
+.mini-stats.three { grid-template-columns: repeat(3, 1fr); }
 
 /* status colours */
 .s-P { --c: #d8f0e2; --t: #13804b; }
@@ -464,10 +480,16 @@ li.unmet .ci { background: var(--danger-soft); color: var(--danger); }
 .heatmap .hm-crit { text-align: left; color: var(--text); min-width: 200px; font-weight: 500; }
 .heatmap .hm-method { color: var(--faint); font-size: 11.5px; white-space: nowrap; padding: 0 8px; }
 .heatmap .hm-group { border-bottom: 2px solid var(--border); }
-.heatmap .hm-group.rate { color: var(--text); font-weight: 600; }
+.heatmap .hm-group.rate { color: var(--text); font-weight: 600; white-space: nowrap; }
 .heatmap .hm-clinic { font-weight: 600; color: var(--text); white-space: nowrap; }
 .heatmap .hm-clinic button { border: 0; background: none; font: inherit; color: var(--primary); cursor: pointer; text-decoration: underline dotted; }
-.hm-cell { background: var(--c); color: var(--t); padding: 6px 8px; border-radius: 4px; min-width: 90px; max-width: 160px; line-height: 1.35; }
+/* Status cells are equal rectangles: fixed size, and nothing else in the row or column may stretch them. */
+.hm-cell { background: var(--c); padding: 0; border-radius: 4px; width: 72px; min-width: 72px; max-width: 72px; height: 26px; cursor: help; }
+.heatmap { width: auto; }
+.heatmap .hm-crit, .heatmap .hm-rate { white-space: nowrap; }
+.heatmap th.hm-clinic { padding-left: 0; padding-right: 0; }
+.heatmap th.hm-clinic button { display: block; max-width: 72px; padding: 0; margin: 0 auto; overflow: hidden; text-overflow: ellipsis; }
+.hm-cell:hover { box-shadow: inset 0 0 0 2px var(--t); }
 .hm-rate { text-align: center; font-weight: 600; border-radius: 4px; min-width: 60px;
   background: rgba(19, 128, 75, var(--a)); color: var(--text); }
 .hm-rate.na { background: #f4f6f9; color: var(--faint); font-weight: 400; }
@@ -490,7 +512,16 @@ li.unmet .ci { background: var(--danger-soft); color: var(--danger); }
 .slicer { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .slicer select { font: inherit; color: var(--text); padding: 5px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); min-width: 180px; }
 .hm-rate small { display: block; font-size: 10.5px; font-weight: 400; color: var(--muted); line-height: 1.2; }
-.hm-group.rate small { font-weight: 400; color: var(--faint); }
+.hm-group.rate small { display: block; font-weight: 400; color: var(--faint); }
+
+/* Frozen heatmap columns: criterion and method stay left, pass rate stays right; only clinic columns scroll.
+ * Fixed widths give the method column a known left offset (criterion width + 2px border-spacing).
+ * Opaque backgrounds and the 2px shadows hide clinic cells scrolling underneath, gaps included. */
+.heatmap .hm-crit, .heatmap .hm-method, .heatmap .hm-rate, .heatmap .hm-group.rate { position: sticky; z-index: 1; background-color: var(--surface); box-sizing: border-box; }
+.heatmap .hm-crit { left: 0; width: 280px; min-width: 280px; max-width: 280px; box-shadow: 2px 0 0 var(--surface), -2px 0 0 var(--surface); }
+.heatmap .hm-method { left: 282px; width: 120px; min-width: 120px; max-width: 120px; box-shadow: 2px 0 0 var(--surface), 8px 0 6px -6px rgba(16, 24, 40, 0.18); }
+.heatmap .hm-rate, .heatmap .hm-group.rate { right: 0; box-shadow: -2px 0 0 var(--surface), -8px 0 6px -6px rgba(16, 24, 40, 0.18); }
+.heatmap .hm-rate { background: linear-gradient(rgba(19, 128, 75, var(--a)), rgba(19, 128, 75, var(--a))), var(--surface); }
 
 /* Clinic evaluation history and dedicated page */
 .fy[hidden] { display: none; }

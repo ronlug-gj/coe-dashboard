@@ -1,5 +1,5 @@
-import { TIERS, CRITERIA, STATUS, CLINICS, CLINIC_WORKS } from "../dataset.js";
-import { pct, critSummary, selectedEvaluation, clinicPageUrl } from "../lib.js";
+import { CRITERIA, STATUS, CLINICS, CLINIC_WORKS } from "../dataset.js";
+import { pct, critSummary, selectedEvaluation, clinicPageUrl, tierInfo } from "../lib.js";
 import { Pill, SegBar, TierBadge } from "../components/common.jsx";
 import { EvaluationBody, EvaluationSelectors } from "../components/Evaluation.jsx";
 
@@ -11,8 +11,8 @@ function EvaluationProgress({ clinic: c, selected }) {
       <h3>ความก้าวหน้าตามการประเมิน</h3>
       <nav className="evaluation-tier-history" aria-label="ระดับศูนย์ตามการประเมิน จากครั้งแรกถึงครั้งล่าสุด">
         {c.evaluations.map((e) => {
-          const detail = `${e.label} · ${TIERS[e.tier].code} · ${e.date || "ไม่ระบุวันที่ประเมิน"}`;
-          return <a key={e.id} className="evaluation-tier-block" style={{ background: TIERS[e.tier].color }} href={clinicPageUrl(c.id, e.id)} title={detail} aria-label={detail} aria-current={current(e.id === selected.id)} />;
+          const detail = `${e.label} · ${tierInfo(e.tier).code} · ${e.date || "ไม่ระบุวันที่ประเมิน"}`;
+          return <a key={e.id} className="evaluation-tier-block" style={{ background: tierInfo(e.tier).color }} href={clinicPageUrl(c.id, e.id)} title={detail} aria-label={detail} aria-current={current(e.id === selected.id)} />;
         })}
       </nav>
       <div className="evaluation-timeline">
@@ -27,7 +27,7 @@ function EvaluationProgress({ clinic: c, selected }) {
               <small className="muted">{e.date || "ไม่ระบุวันที่ประเมิน"}</small>
               <strong>{s.P}/{s.total} เกณฑ์ผ่าน · {pct(s.P, s.total)}%</strong>
               <SegBar clinic={e} />
-              <small>บางส่วน {s.H} · รอข้อมูล {s.W} · ไม่ผ่าน {s.F}</small>
+              <small>บางส่วน {s.H} · ไม่ผ่าน {s.F}{s.W ? ` · รอข้อมูล ${s.W}` : ""}</small>
               <span>{previous
                 ? `ผ่านเพิ่ม ${newlyPassed.length} เกณฑ์${newlyPassed.length ? `: ${newlyPassed.map((k) => k.short).join(", ")}` : ""}`
                 : "การประเมินครั้งแรก · จุดเริ่มต้นการติดตาม"}</span>
@@ -36,7 +36,14 @@ function EvaluationProgress({ clinic: c, selected }) {
           );
         })}
       </div>
-      <h4>ประวัติผลรายเกณฑ์</h4>
+    </section>
+  );
+}
+
+function CriteriaHistory({ clinic: c }) {
+  return (
+    <section className="card">
+      <h3>ประวัติผลรายเกณฑ์</h3>
       <div className="table-wrap">
         <table className="evaluation-history">
           <thead><tr><th>เกณฑ์การประเมิน</th>{c.evaluations.map((e) => <th key={e.id}>{e.label}</th>)}</tr></thead>
@@ -122,8 +129,10 @@ export default function ClinicPage({ clinic: c, evaluationId, tab = "evaluation"
           <EvaluationProgress clinic={c} selected={evaluation} />
           <section className="card evaluation-detail">
             <h3>รายละเอียดการประเมิน · {evaluation.label}</h3>
-            <EvaluationBody clinic={c} evaluation={evaluation} />
+            {/* Per-criterion results are in ประวัติผลรายเกณฑ์ below, so the list is left out here. */}
+            <EvaluationBody clinic={c} evaluation={evaluation} showCriteria={false} />
           </section>
+          <CriteriaHistory clinic={c} />
         </>
       )}
     </div>

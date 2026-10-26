@@ -10,6 +10,10 @@ const TIERS = [
   { id: 3, code: "iGJCOE", name: "International GJCOE", color: "#0B3A82" },
 ];
 
+// Clinic enrolled in the program but not yet assigned a tier (tier === null). Not in TIERS:
+// it has no requirements and no step on the ladder.
+const ENROLLED = { id: null, code: "กำลังจัดระดับ", name: "เข้าร่วมโครงการแล้ว อยู่ระหว่างการประเมินเพื่อจัดระดับ", color: "#D5D9DF" };
+
 const FISCAL_YEARS = [2568, 2569];
 
 // The dataset's "today" as { fy, month, label }; null = data runs to the end of the last fiscal year.
@@ -43,12 +47,14 @@ const CRITERIA = [
   { key: "innov", label: "นวัตกรรม", short: "นวัตกรรม", method: "จำนวนเรื่อง" },
 ];
 
-// Cell status: P = ผ่าน, H = ผ่านบางส่วน, W = รอข้อมูล/อยู่ระหว่างดำเนินการ, F = ไม่ผ่าน
+// Cell status: P = ผ่าน, H = ผ่านบางส่วน, F = ไม่ผ่าน, W = รอข้อมูล.
+// In assessed clinics, criteria still waiting for data or in progress count as H (the note says which).
+// W is only for clinics not yet assigned a tier (กำลังจัดระดับ), which have no results at all.
 const STATUS = {
   P: { label: "ผ่าน", tone: "success" },
   H: { label: "ผ่านบางส่วน", tone: "warning" },
-  W: { label: "รอข้อมูล", tone: "info" },
   F: { label: "ไม่ผ่าน", tone: "danger" },
+  W: { label: "รอข้อมูล", tone: "info" },
 };
 
 const PENDING = "อยู่ระหว่างติดตามข้อมูล";
@@ -65,9 +71,9 @@ const CLINICS = [
     id: 1, name: "Joint", dept: "ออร์โธปิดิกส์", tier: 3, joinFy: 2568, joinMonth: 0,
     criteria: {
       mdt: ["P", "มี"], swot: ["P", "มี"], profile: ["P", "มี"], tracer: ["P", "มี"], diagram: ["P", "มี"],
-      present: ["W", PENDING], bench: ["P", "มี"], accredit: ["P", "มี"], training: ["P", "ใช่"],
+      present: ["H", PENDING], bench: ["P", "มี"], accredit: ["P", "มี"], training: ["P", "ใช่"],
       sar: ["P", "Part I-IV"], outcome: ["P", "ผ่าน"], kpiyears: ["P", "≥5 ปี"],
-      cqi: ["H", "2"], r2r: ["W", "7 (รอคอนเฟิร์มข้อมูล)"], innov: ["F", "0"],
+      cqi: ["H", "2"], r2r: ["H", "7 (รอคอนเฟิร์มข้อมูล)"], innov: ["F", "0"],
     },
     metrics: { growth: null, outcomeMet: true, satisfaction: null, research: 7 },
   },
@@ -75,9 +81,9 @@ const CLINICS = [
     id: 2, name: "IR", dept: "รังสีร่วมรักษา", tier: 2, joinFy: 2568, joinMonth: 0,
     criteria: {
       mdt: ["P", "มี"], swot: ["P", "มี"], profile: ["P", "มี"], tracer: ["P", "มี"], diagram: ["P", "มี"],
-      present: ["W", PENDING], bench: ["P", "มี"], accredit: ["F", "ไม่มี"], training: ["P", "ใช่"],
-      sar: ["W", "กำลังดำเนินการ"], outcome: ["P", "ผ่าน (11 ใน 13)"], kpiyears: ["P", "2 ปี (เริ่ม 2567)"],
-      cqi: ["F", "0"], r2r: ["W", "2 (กำลังส่งตีพิมพ์)"], innov: ["W", "1 (กำลังดำเนินการ)"],
+      present: ["H", PENDING], bench: ["P", "มี"], accredit: ["F", "ไม่มี"], training: ["P", "ใช่"],
+      sar: ["H", "กำลังดำเนินการ"], outcome: ["P", "ผ่าน (11 ใน 13)"], kpiyears: ["P", "2 ปี (เริ่ม 2567)"],
+      cqi: ["F", "0"], r2r: ["H", "2 (กำลังส่งตีพิมพ์)"], innov: ["H", "1 (กำลังดำเนินการ)"],
     },
     metrics: { growth: null, outcomeMet: true, satisfaction: null, research: 2 },
   },
@@ -85,7 +91,7 @@ const CLINICS = [
     id: 3, name: "CKD", dept: "อายุรกรรม", tier: 0, joinFy: 2569, joinMonth: 0,
     criteria: {
       mdt: ["P", "มี"], swot: ["P", "มี"], profile: ["P", "มี"], tracer: ["P", "มี"], diagram: ["P", "มี"],
-      present: ["W", PENDING], bench: ["P", "มี"], accredit: ["P", "มี"], training: ["P", "ใช่"],
+      present: ["H", PENDING], bench: ["P", "มี"], accredit: ["P", "มี"], training: ["P", "ใช่"],
       sar: ["P", "Part I-IV"], outcome: ["P", "ผ่านปี 68 (77.78%)"], kpiyears: ["P", "4 ปี (เริ่ม 2566)"],
       cqi: ["H", "1 เรื่องตามกลุ่มเป้าหมาย · 2 เรื่องไม่ตรงกลุ่มเป้าหมาย"], r2r: ["P", "วิจัย 2 (Q1=2) · R2R 1 (ได้รางวัล)"],
       innov: ["H", "1 (เรื่องเดียวกับ R2R)"],
@@ -96,8 +102,8 @@ const CLINICS = [
     id: 4, name: "Stroke", dept: "อายุรกรรม", tier: 0, joinFy: 2569, joinMonth: 0,
     criteria: {
       mdt: ["F", "ไม่มี"], swot: ["P", "มี"], profile: ["F", "ไม่มี"], tracer: ["P", "มี"], diagram: ["F", "ไม่มี"],
-      present: ["W", PENDING], bench: ["P", "มี"], accredit: ["F", "ไม่มี"], training: ["F", "ไม่ใช่"],
-      sar: ["F", "ไม่มี"], outcome: ["W", "อยู่ระหว่างเก็บข้อมูล"], kpiyears: ["P", "2 ปี (เริ่ม 2567)"],
+      present: ["H", PENDING], bench: ["P", "มี"], accredit: ["F", "ไม่มี"], training: ["F", "ไม่ใช่"],
+      sar: ["F", "ไม่มี"], outcome: ["H", "อยู่ระหว่างเก็บข้อมูล"], kpiyears: ["P", "2 ปี (เริ่ม 2567)"],
       cqi: ["F", "0"], r2r: ["F", "0"], innov: ["F", "0"],
     },
     metrics: { growth: null, outcomeMet: null, satisfaction: null, research: 0 },
@@ -106,9 +112,9 @@ const CLINICS = [
     id: 5, name: "Obesity", dept: "อายุรกรรม", tier: 0, joinFy: 2569, joinMonth: 0,
     criteria: {
       mdt: ["P", "มี"], swot: ["P", "มี"], profile: ["F", "ไม่มี"], tracer: ["P", "มี"], diagram: ["P", "มี"],
-      present: ["W", PENDING], bench: ["P", "มี"], accredit: ["F", "ไม่มี"], training: ["P", "ใช่"],
-      sar: ["F", "ไม่มี"], outcome: ["W", "อยู่ระหว่างเก็บข้อมูล"], kpiyears: ["P", "1 ปี 6 เดือน"],
-      cqi: ["F", "0"], r2r: ["W", "อยู่ระหว่างดำเนินการ"], innov: ["F", "0"],
+      present: ["H", PENDING], bench: ["P", "มี"], accredit: ["F", "ไม่มี"], training: ["P", "ใช่"],
+      sar: ["F", "ไม่มี"], outcome: ["H", "อยู่ระหว่างเก็บข้อมูล"], kpiyears: ["P", "1 ปี 6 เดือน"],
+      cqi: ["F", "0"], r2r: ["H", "อยู่ระหว่างดำเนินการ"], innov: ["F", "0"],
     },
     metrics: { growth: null, outcomeMet: null, satisfaction: null, research: 0 },
   },
@@ -116,7 +122,7 @@ const CLINICS = [
     id: 6, name: "MIS Spine", dept: "ออร์โธปิดิกส์", tier: 0, joinFy: 2569, joinMonth: 0,
     criteria: {
       mdt: ["P", "มี"], swot: ["P", "มี"], profile: ["P", "มี"], tracer: ["P", "มี"], diagram: ["P", "มี"],
-      present: ["W", PENDING], bench: ["P", "มี"], accredit: ["F", "ไม่มี"], training: ["F", "ไม่ใช่"],
+      present: ["H", PENDING], bench: ["P", "มี"], accredit: ["F", "ไม่มี"], training: ["F", "ไม่ใช่"],
       sar: ["H", "Part I-III"], outcome: ["P", "ผ่าน (85%)"], kpiyears: ["P", "4 ปี (เริ่ม 2565)"],
       cqi: ["P", "4"], r2r: ["P", "5 (Q1=1, Q2=3) เสร็จ 4 · ระหว่างดำเนินการ 1"], innov: ["F", "0"],
     },
@@ -184,4 +190,4 @@ CLINICS.forEach((c) => {
   }];
 });
 
-export { AS_OF, TIERS, FISCAL_YEARS,COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, PENDING, CLINICS, TIER_REQ, TIER_MIN, FACTS };
+export { AS_OF, TIERS, ENROLLED, FISCAL_YEARS,COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, PENDING, CLINICS, TIER_REQ, TIER_MIN, FACTS };

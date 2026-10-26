@@ -15,8 +15,8 @@ COE Monitor shows where each clinic stands on the COE tier ladder and what it st
 
 The prototype has these views:
 
-- **Project overview** (`#overview`): project KPIs, growth charts that compare new COEs with the yearly target, and a heatmap of audit results by clinic and criterion.
-- **All clinics** (`#clinics`): every clinic with its current tier, entry year and how many criteria it has passed, has not yet met, or is waiting on data. You can filter, search and sort the list.
+- **Project overview** (`#overview`): project KPIs, growth charts (click a fiscal year in the monthly chart to drill down to its months), and a heatmap of audit results by clinic and criterion.
+- **All clinics** (`#clinics`): every clinic with its current tier, entry year and how many criteria it has passed and has not yet met. You can filter, search and sort the list.
 - **Clinic detail** (`#clinic/<id>`): the clinic's evaluation history and its results on each criterion.
 - **Clinic works** (`#clinic/<id>/<evaluation>/works`): the clinic's CQI, R2R/research and innovation works.
 

@@ -1,5 +1,5 @@
 /* COE Monitor – dashboard prototype. React, bundled with Vite. */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FISCAL_YEARS, CLINICS, IS_DEMO, AS_OF } from "./dataset.js";
 import { inScope } from "./lib.js";
 import Drawer from "./components/Drawer.jsx";
@@ -42,10 +42,16 @@ export default function App() {
   };
   const closeDrawer = () => setDrawer((d) => (d.open ? { ...d, open: false } : d));
 
-  // Every navigation or FY change closes the drawer and scrolls to the top;
+  // Every navigation or FY change closes the drawer and scrolls to the top, except picking another
+  // evaluation on the same clinic page and tab, which keeps the reader's place;
   // a #<view>/<clinicId> link then re-opens the drawer for that clinic.
+  const lastRoute = useRef(null);
   useEffect(() => {
-    window.scrollTo(0, 0);
+    const route = { isClinicPage, clinicId, tab };
+    const prev = lastRoute.current;
+    lastRoute.current = route;
+    const sameClinicPage = prev && isClinicPage && prev.isClinicPage && prev.clinicId === clinicId && prev.tab === tab;
+    if (!sameClinicPage) window.scrollTo(0, 0);
     const deepLinkId = !isClinicPage && clinicId && CLINICS.some((c) => c.id === +clinicId) ? +clinicId : null;
     setDrawer((d) => (deepLinkId ? { open: true, id: deepLinkId, evaluationId: undefined } : { ...d, open: false }));
   }, [hash, fy, isClinicPage, clinicId]);

@@ -1,12 +1,13 @@
 /* DUMMY data for demos: the dashboard as it would look in พ.ค. 2573 (FY 2573, month 7).
  * Not real evaluation results. Clinics 1–6 continue the real FY 2568–2569 clinics with an
- * invented future; clinics 7–13 are invented. Run with `pnpm dev:demo`.
+ * invented future; clinics 7–15 are invented. Clinics 14–15 are enrolled but not yet assigned
+ * a tier (their only record is an unassessed placeholder). Run with `pnpm dev:demo`.
  *
  * Each clinic lists its evaluations (oldest first). Criteria texts, the clinic's current
  * state, tier history and KPI history are all derived from those evaluations so every
  * view stays consistent.
  */
-import { TIERS, CRITERIA, STATUS, PENDING, TIER_REQ, TIER_MIN } from "../data.js";
+import { TIERS, ENROLLED, CRITERIA, STATUS, PENDING, TIER_REQ, TIER_MIN } from "../data.js";
 
 // Fiscal-year month order (ต.ค. first); kept local so this module doesn't import lib.js.
 const MONTHS = ["ต.ค.", "พ.ย.", "ธ.ค.", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย."];
@@ -22,24 +23,26 @@ const ROMAN = ["", "I", "II", "III", "IV"];
 
 // "18 ก.ย. 2569" → fiscal year (ต.ค.–ธ.ค. belong to the next FY)
 const fyOf = (date) => {
+  if (!date) return null;
   const [, month, year] = date.split(" ");
   return MONTHS.indexOf(month) < 3 ? +year + 1 : +year;
 };
 
 function binaryCell(key, st) {
   const yes = key === "training" ? "ใช่" : "มี";
-  return [st, { P: yes, F: `ไม่${yes}`, H: "อยู่ระหว่างจัดทำ", W: PENDING }[st]];
+  // W in a `bin` string means "no data yet"; it is reported as ผ่านบางส่วน with the PENDING note.
+  return st === "W" ? ["H", PENDING] : [st, { P: yes, F: `ไม่${yes}`, H: "อยู่ระหว่างจัดทำ" }[st]];
 }
 
 function r2rCell(r) {
-  if (r === null) return ["W", "อยู่ระหว่างดำเนินการ"];
+  if (r === null) return ["H", "อยู่ระหว่างดำเนินการ"];
   const [any, tci, q] = r;
   const pub = [q && `Q1–Q4=${q}`, tci - q && `TCI 1=${tci - q}`].filter(Boolean).join(", ");
   return [tci >= 1 ? "P" : any >= 1 ? "H" : "F", `${any} เรื่อง${pub ? ` (${pub})` : ""}`];
 }
 
 const countCell = (n, pass, unit = "") =>
-  n === null ? ["W", "อยู่ระหว่างเก็บข้อมูล"] : [n >= pass ? "P" : n > 0 ? "H" : "F", `${n}${unit}`];
+  n === null ? ["H", "อยู่ระหว่างเก็บข้อมูล"] : [n >= pass ? "P" : n > 0 ? "H" : "F", `${n}${unit}`];
 
 /* E(date, tier, bin, facts, metrics, overrides)
  *   facts:   [sar, kpiyears, cqi, r2r [any, tci, q] | null, innov]   (null = รอข้อมูล)
@@ -47,8 +50,8 @@ const countCell = (n, pass, unit = "") =>
  */
 function E(date, tier, bin, [sar, kpiyears, cqi, r2r, innov], [growth, outcomeMet, satisfaction, research], overrides = {}) {
   const criteria = Object.fromEntries(BIN.map((key, i) => [key, binaryCell(key, bin[i])]));
-  criteria.sar = sar === null ? ["W", "กำลังดำเนินการ"] : sar === 4 ? ["P", "Part I-IV"] : sar > 0 ? ["H", `Part I-${ROMAN[sar]}`] : ["F", "ไม่มี"];
-  criteria.outcome = outcomeMet === null ? ["W", "อยู่ระหว่างเก็บข้อมูล"] : outcomeMet ? ["P", "ผ่าน"] : ["F", "ไม่ผ่าน"];
+  criteria.sar = sar === null ? ["H", "กำลังดำเนินการ"] : sar === 4 ? ["P", "Part I-IV"] : sar > 0 ? ["H", `Part I-${ROMAN[sar]}`] : ["F", "ไม่มี"];
+  criteria.outcome = outcomeMet === null ? ["H", "อยู่ระหว่างเก็บข้อมูล"] : outcomeMet ? ["P", "ผ่าน"] : ["F", "ไม่ผ่าน"];
   criteria.kpiyears = countCell(kpiyears, 3, " ปี");
   criteria.cqi = countCell(cqi, 3);
   criteria.r2r = r2rCell(r2r);
@@ -62,6 +65,12 @@ function E(date, tier, bin, [sar, kpiyears, cqi, r2r, innov], [growth, outcomeMe
 }
 
 const NA = [null, null, null, 0];
+
+// Placeholder for a clinic enrolled but not yet assessed: no date, no tier, every criterion รอข้อมูล (W).
+const UNASSESSED = {
+  ...E(null, null, "WWWWWWWWW", [null, null, null, null, null], [null, null, null, null]),
+  criteria: Object.fromEntries(CRITERIA.map((k) => [k.key, ["W", "รอการประเมินเพื่อจัดระดับ"]])),
+};
 
 // ---------- Clinics ----------
 const RAW = [
@@ -133,20 +142,24 @@ const RAW = [
     E("18 มิ.ย. 2572", 0, "PFFFFWFFF", [0, 1, 0, null, 0], NA),
     E("31 ส.ค. 2572", 0, "PPFPFWPFF", [0, 1, 1, null, 0], NA),
   ] },
-  { id: 12, name: "Pain", dept: "วิสัญญีวิทยา", joinFy: 2573, joinMonth: 4, evaluations: [
+  { id: 12, name: "Pain", dept: "วิสัญญีวิทยา", joinFy: 2572, joinMonth: 10, evaluations: [
     E("23 เม.ย. 2573", 0, "PPWWFWPFF", [0, null, 0, null, 0], NA),
   ] },
   { id: 13, name: "Retina", dept: "จักษุวิทยา", joinFy: 2573, joinMonth: 6, evaluations: [
     E("8 พ.ค. 2573", 0, "PWWWWWWFF", [null, 1, null, null, null], NA),
   ] },
+  { id: 14, name: "Dermatology", dept: "ผิวหนัง", joinFy: 2572, joinMonth: 9, evaluations: [UNASSESSED] },
+  { id: 15, name: "Psychiatry", dept: "จิตเวช", joinFy: 2573, joinMonth: 5, evaluations: [UNASSESSED] },
 ];
 
 // Current state = latest evaluation; tier history = every tier change, by fiscal year.
 const CLINICS = RAW.map((c) => {
   const evaluations = c.evaluations.map((e, i) => ({ id: String(i + 1), label: `ครั้งที่ ${i + 1}`, ...e }));
   const latest = evaluations[evaluations.length - 1];
-  const history = [{ fy: c.joinFy, tier: evaluations[0].tier }];
-  evaluations.forEach((e) => {
+  // History starts at the first assessment that gave a tier; enrolled clinics before that have none.
+  const assessed = evaluations.filter((e) => e.tier !== null);
+  const history = assessed.length ? [{ fy: fyOf(assessed[0].date), tier: assessed[0].tier }] : [];
+  assessed.forEach((e) => {
     if (e.tier !== history[history.length - 1].tier) history.push({ fy: fyOf(e.date), tier: e.tier });
   });
   return { ...c, tier: latest.tier, criteria: latest.criteria, metrics: latest.metrics, facts: latest.facts, history, evaluations };
@@ -170,4 +183,4 @@ const KPI_HISTORY = Object.fromEntries(FISCAL_YEARS.filter((fy) => fy < AS_OF.fy
   }))];
 }));
 
-export { AS_OF, TIERS, FISCAL_YEARS, COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, PENDING, CLINICS, TIER_REQ, TIER_MIN, FACTS };
+export { AS_OF, TIERS, ENROLLED, FISCAL_YEARS, COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, PENDING, CLINICS, TIER_REQ, TIER_MIN, FACTS };

@@ -29,23 +29,23 @@ export function EvaluationSelectors({ clinic, evaluation, onSelect, showClinic =
 const Waiting = () => <span className="muted">รอข้อมูล</span>;
 const metricValue = (v, unit) => (v === null || v === undefined ? <Waiting /> : `${v}${unit}`);
 
-export function EvaluationBody({ clinic, evaluation }) {
+export function EvaluationBody({ clinic, evaluation, showCriteria = true }) {
   const c = { ...clinic, ...evaluation };
   const s = critSummary(c);
   return (
     <>
       <div className="ladder">
         {TIERS.map((t) => (
-          <div key={t.id} className={`ladder-step ${t.id <= c.tier ? "done" : ""} ${t.id === c.tier ? "current" : ""} t${t.id}`}>
+          <div key={t.id} className={`ladder-step ${c.tier !== null && t.id <= c.tier ? "done" : ""} ${t.id === c.tier ? "current" : ""} t${t.id}`}>
             <span className="ladder-dot" /><span className="ladder-code">{t.code}</span><span className="ladder-name">{t.name}</span>
           </div>
         ))}
       </div>
-      <div className="mini-stats">
+      <div className={`mini-stats ${s.W ? "" : "three"}`}>
         <div><span>ผ่านเกณฑ์</span><b>{s.P}/{s.total}</b></div>
         <div><span>ผ่านบางส่วน</span><b>{s.H}</b></div>
-        <div><span>รอข้อมูล</span><b>{s.W}</b></div>
         <div><span>ไม่ผ่าน</span><b>{s.F}</b></div>
+        {s.W > 0 && <div><span>รอข้อมูล</span><b>{s.W}</b></div>}
       </div>
       <h4>ตัวชี้วัดผลลัพธ์</h4>
       <div className="mini-stats">
@@ -54,6 +54,7 @@ export function EvaluationBody({ clinic, evaluation }) {
         <div><span>พึงพอใจระดับ 4</span><b>{metricValue(c.metrics.satisfaction, "%")}</b></div>
         <div><span>วิจัย/R2R</span><b>{metricValue(c.metrics.research, " เรื่อง")}</b></div>
       </div>
+      {showCriteria && <>
       <h4>ผลการตรวจตามเกณฑ์</h4>
       <ul className="crit-list">
         {CRITERIA.map((k) => {
@@ -67,6 +68,7 @@ export function EvaluationBody({ clinic, evaluation }) {
           );
         })}
       </ul>
+      </>}
     </>
   );
 }

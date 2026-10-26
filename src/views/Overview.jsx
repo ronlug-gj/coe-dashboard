@@ -1,7 +1,10 @@
-import { Fragment } from "react";
-import { TIERS, FISCAL_YEARS, COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, CLINICS, TIER_REQ, AS_OF } from "../dataset.js";
-import { pct, MONTHS, inScope, coeSinceFy, coeBy, promotedBy, critSummary, tierStatus } from "../lib.js";
+import { Fragment, useState } from "react";
+import { TIERS, ENROLLED, FISCAL_YEARS, COE_TARGET, KPI_HISTORY, CRITERIA, STATUS, CLINICS, AS_OF } from "../dataset.js";
+import { pct, MONTHS, inScope, coeSinceFy, coeBy, promotedBy, critSummary, tierClass, tierInfo, tierAt } from "../lib.js";
 import { Icon, TierBadge } from "../components/common.jsx";
+
+// Chart layers, bottom to top: enrolled clinics with no tier yet, then the tiers in ladder order.
+const LAYERS = [ENROLLED, ...TIERS];
 
 // ---------- KPI cards ----------
 const HISTORY_LABELS = { P: "บรรลุเป้าหมาย", H: "บรรลุบางส่วน", W: "รอข้อมูล", F: "ไม่บรรลุเป้าหมาย" };
@@ -84,57 +87,76 @@ function Stats({ fy }) {
   );
 }
 
-function TierLegend({ children }) {
+function TierLegend({ layers = LAYERS, children }) {
   return (
     <div className="legend-row">
-      {TIERS.map((t) => <span key={t.id}><i className={`sw t${t.id}`} />{t.code}</span>)}
+      {layers.map((t) => <span key={t.code}><i className={`sw ${tierClass(t.id)}`} />{t.code}</span>)}
       {children}
     </div>
   );
 }
 
 // ---------- Area chart: clinics in program by month, by tier ----------
+// Drill-down like Power BI: click a fiscal year to see just its months; drill up to return to all years.
 function AreaChart({ fy }) {
+  const [drillFy, setDrillFy] = useState(null);
+  const years = FISCAL_YEARS.filter((y) => y <= fy);
+  const drill = years.includes(drillFy) ? drillFy : null; // a drilled year past the selected FY falls back to all years
   const months = [];
-  FISCAL_YEARS.filter((y) => y <= fy).forEach((year) => MONTHS.forEach((mName, mi) => {
+  (drill ? [drill] : years).forEach((year) => MONTHS.forEach((mName, mi) => {
     const yr = String((mi < 3 ? year - 1 : year) % 100).padStart(2, "0");
     // Stop at the dataset's "today" instead of drawing flat future months.
     if (AS_OF && year === AS_OF.fy && mi > AS_OF.month) return;
     months.push({ fy: year, mi, label: `${mName} ${yr}` });
   }));
-  const labelEvery = months.length > 24 ? 6 : 3; // months between x-axis labels; wider spacing for long ranges
-  const counts = months.map((mo) => TIERS.map((t) => CLINICS.filter((c) =>
-    c.tier === t.id && (c.joinFy < mo.fy || (c.joinFy === mo.fy && c.joinMonth <= mo.mi))).length));
+  // months between x-axis labels; every month when drilled, wider spacing for long ranges
+  const labelEvery = drill ? 1 : months.length > 24 ? 6 : 3;
+  // Each clinic counts under the tier it held that month, so promotions move it up the stack.
+  const counts = months.map((mo) => LAYERS.map((t) => CLINICS.filter((c) => tierAt(c, mo.fy, mo.mi) === t.id).length));
   const totals = counts.map((r) => r.reduce((a, b) => a + b, 0));
   const w = 760, h = 240, pl = 30, pr = 12, pt = 16, pb = 34;
-  const x = (i) => pl + (i * (w - pl - pr)) / (months.length - 1);
+  const step = (w - pl - pr) / Math.max(1, months.length - 1);
+  const x = (i) => pl + i * step;
   const last = totals.length - 1;
   // A short final fiscal year puts its "ปีงบ" label next to the total label; add headroom so they don't collide.
   const crowded = x(last) - x(months.findIndex((mo) => mo.fy === months[last].fy)) < 120;
-  const max = crowded
-    ? Math.ceil((Math.max(...totals) + 2) / 4) * 4
-    : Math.max(4, Math.ceil(Math.max(...totals) / 2) * 2);
+  // Multiple of 4 so the four grid steps are whole clinic counts.
+  const max = Math.max(4, Math.ceil((Math.max(...totals) + (crowded ? 2 : 0)) / 4) * 4);
   const y = (v) => h - pb - (v / max) * (h - pt - pb);
 
   const grid = [];
   for (let v = 0; v <= max; v += max / 4) grid.push(v);
-  // stacked areas (bottom = AOI)
+  // stacked areas (bottom = enrolled, then AOI)
   const cum = months.map(() => 0);
-  const areas = TIERS.map((t) => {
+  const areas = LAYERS.map((t, li) => {
     const lower = cum.slice();
-    counts.forEach((r, i) => (cum[i] += r[t.id]));
-    if (!counts.some((r) => r[t.id])) return null;
+    counts.forEach((r, i) => (cum[i] += r[li]));
+    if (!counts.some((r) => r[li])) return null;
     const top = cum.map((v, i) => `${x(i)},${y(v)}`).join(" ");
     const bot = lower.map((v, i) => `${x(i)},${y(v)}`).reverse().join(" ");
-    return <polygon key={t.id} points={`${top} ${bot}`} fill={t.color} fillOpacity="0.85"><title>{t.code}</title></polygon>;
+    return <polygon key={li} points={`${top} ${bot}`} fill={t.color} fillOpacity="0.85"><title>{t.code}</title></polygon>;
   });
+
+  const drillTo = (year) => () => setDrillFy(year);
+  const onKey = (year) => (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDrillFy(year); } };
+  const di = years.indexOf(drill);
 
   return (
     <section className="card span-7">
-      <header className="card-head"><div>
-        <h3>จำนวนศูนย์ในโครงการรายเดือน</h3>
-        <p>จำแนกตามระดับปัจจุบัน · ต.ค. {(FISCAL_YEARS[0] - 1) % 100} – {months[last].label}</p>
-      </div></header>
+      <header className="card-head">
+        <div>
+          <h3>จำนวนศูนย์ในโครงการรายเดือน</h3>
+          <p>จำแนกตามระดับ ณ แต่ละเดือน · {months[0].label} – {months[last].label}{!drill && " · คลิกที่ปีงบเพื่อดูรายเดือน"}</p>
+        </div>
+        {drill && (
+          <nav className="drill" aria-label="เลื่อนดูรายปีงบ">
+            <button onClick={drillTo(null)} title="กลับไปดูทุกปีงบ">↑ ทุกปีงบ</button>
+            <button onClick={drillTo(years[di - 1])} disabled={di === 0} aria-label="ปีงบก่อนหน้า">‹</button>
+            <b>ปีงบ {drill}</b>
+            <button onClick={drillTo(years[di + 1])} disabled={di === years.length - 1} aria-label="ปีงบถัดไป">›</button>
+          </nav>
+        )}
+      </header>
       <svg className="chart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
         {grid.map((v) => (
           <Fragment key={v}>
@@ -146,27 +168,40 @@ function AreaChart({ fy }) {
         <polyline points={totals.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" stroke="#17212f" strokeWidth="1.5" />
         {months.map((mo, i) => (
           <Fragment key={i}>
-            {mo.mi % labelEvery === 0 &&<text x={x(i)} y={h - pb + 16} className={`axis-label ${mo.mi === 0 ? "strong" : ""}`} textAnchor="middle">{mo.label}</text>}
+            {mo.mi % labelEvery === 0 &&<text x={x(i)} y={h - pb + 16} className={`axis-label ${mo.mi === 0 ? "strong" : ""}`} textAnchor={i === last ? "end" : "middle"}>{mo.label}</text>}
             {mo.mi === 0 && i > 0 && <line x1={x(i)} x2={x(i)} y1={pt} y2={h - pb} className="fy-line" />}
-            {mo.mi === 0 && <text x={x(i) + 4} y={pt + 8} className="axis-label">ปีงบ {mo.fy}</text>}
+            {mo.mi === 0 && (drill
+              ? <text x={x(i) + 4} y={pt + 8} className="axis-label">ปีงบ {mo.fy}</text>
+              : <text x={x(i) + 4} y={pt + 8} className="axis-label fy-link" role="button" tabIndex={0} onClick={drillTo(mo.fy)} onKeyDown={onKey(mo.fy)}>ปีงบ {mo.fy}</text>)}
           </Fragment>
         ))}
         <text x={x(last) - 4} y={y(totals[last]) - 6} className="bar-label strong" textAnchor="end">{totals[last]} ศูนย์</text>
+        {/* Hover targets, one per month: tier breakdown tooltip, and a click drills into that month's fiscal year. */}
+        {months.map((mo, i) => (
+          <rect key={i} x={Math.max(pl, x(i) - step / 2)} y={pt + 12} width={Math.min(x(i) + step / 2, w - pr) - Math.max(pl, x(i) - step / 2)} height={h - pb - pt - 12}
+            className={`chart-hit ${drill ? "" : "drillable"}`} onClick={drill ? undefined : drillTo(mo.fy)}>
+            <title>{[`${mo.label} · รวม ${totals[i]} ศูนย์`, ...LAYERS.map((t, li) => counts[i][li] ? `${t.code}: ${counts[i][li]}` : null).filter(Boolean), drill ? null : `คลิกเพื่อดูปีงบ ${mo.fy}`].filter(Boolean).join("\n")}</title>
+          </rect>
+        ))}
       </svg>
       <TierLegend />
     </section>
   );
 }
 
-// ---------- Bar chart: new COE per fiscal year by tier ----------
+// ---------- Bar chart: clinics first assigned a tier per fiscal year, by that tier ----------
+// history[0] is the first tier assignment, so a clinic enrolled in one year and assessed the
+// next counts in the later year; clinics still waiting for a tier have no history and are left out.
+const firstAssigned = (year, tier) => CLINICS.filter((c) => c.history[0]?.fy === year && c.history[0].tier === tier);
+
 function BarChart({ fy }) {
   const years = FISCAL_YEARS;
-  const data = years.map((year) => TIERS.map((t) => CLINICS.filter((c) => c.joinFy === year && c.tier === t.id).length));
-  const max = Math.max(4, ...data.map((r) => r.reduce((a, b) => a + b, 0)), ...years.map((y) => COE_TARGET[y] || 0));
+  const data = years.map((year) => TIERS.map((t) => firstAssigned(year, t.id).length));
+  const max = Math.max(4, ...data.map((r) => r.reduce((a, b) => a + b, 0)));
   const w = 420, h = 240, pl = 30, pt = 20, pb = 34;
   const y = (v) => h - pb - (v / max) * (h - pt - pb);
   const bw = (w - pl) / years.length;
-  // Narrow bars (many fiscal years) can't fit clinic names or target labels; those move into hover titles.
+  // Narrow bars (many fiscal years) can't fit clinic names; those move into hover titles.
   const roomy = bw >= 120;
 
   const grid = [];
@@ -176,7 +211,7 @@ function BarChart({ fy }) {
     <section className="card span-5">
       <header className="card-head"><div>
         <h3>จำนวน COE จัดตั้งใหม่รายปีงบประมาณ</h3>
-        <p>จำแนกตามระดับ GJCOE · เส้นประ = เป้าหมาย COE (GJCOE ขึ้นไป)</p>
+        <p>ศูนย์ที่ได้รับการจัดระดับครั้งแรกในแต่ละปีงบ · จำแนกตามระดับที่ได้รับ</p>
       </div></header>
       <svg className="chart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
         {grid.map((v) => (
@@ -193,7 +228,7 @@ function BarChart({ fy }) {
             if (!n) return null;
             const base = acc;
             acc += n;
-            const joined = CLINICS.filter((c) => c.joinFy === year && c.tier === t.id);
+            const joined = firstAssigned(year, t.id);
             return (
               <Fragment key={t.id}>
                 <rect x={x0} y={y(base + n)} width={bwi} height={y(base) - y(base + n)} fill={t.color}>
@@ -205,25 +240,16 @@ function BarChart({ fy }) {
               </Fragment>
             );
           });
-          const tg = COE_TARGET[year] || 0;
           return (
             <Fragment key={year}>
               {segments}
-              {roomy ? (
-                <>
-                  <line x1={x0 - 8} x2={x0 + bwi + 8} y1={y(tg)} y2={y(tg)} className="target-line" />
-                  <text x={x0 + bwi + 10} y={y(tg) + 4} className="axis-label">เป้า COE {tg}</text>
-                </>
-              ) : (
-                <line x1={x0 - 8} x2={x0 + bwi + 8} y1={y(tg)} y2={y(tg)} className="target-line"><title>เป้า COE {tg}</title></line>
-              )}
               <text x={x0 + bwi / 2} y={y(acc) - 6} className="bar-label strong" textAnchor="middle">{acc}</text>
               <text x={x0 + bwi / 2} y={h - 12} className={`axis-label ${year === fy ? "strong" : ""}`} textAnchor="middle">ปีงบ {year}</text>
             </Fragment>
           );
         })}
       </svg>
-      <TierLegend><span><i className="sw target" />เป้าหมาย</span></TierLegend>
+      <TierLegend layers={TIERS} />
     </section>
   );
 }
@@ -240,11 +266,11 @@ function RateCell({ n, d, req, extra = "" }) {
 }
 
 function Heatmap({ fy, hmClinic, onHmClinic, onOpenClinic }) {
-  const all = inScope(fy).slice().sort((a, b) => b.tier - a.tier || a.name.localeCompare(b.name));
+  // Clinics still waiting for their first tier (กำลังจัดระดับ) have no audit results yet, so they're left out.
+  const all = inScope(fy).filter((c) => c.tier !== null).sort((a, b) => b.tier - a.tier || a.name.localeCompare(b.name));
   const selected = hmClinic !== "all" && all.some((c) => c.id === +hmClinic) ? hmClinic : "all";
   const clinics = selected === "all" ? all : all.filter((c) => c.id === +selected);
-  const tiers = TIERS.slice().reverse();
-  const reqTiers = TIERS.filter((t) => t.id > 0); // AOI has no requirements; order dGJCOE → GJCOE → iGJCOE
+  const tiers = [...TIERS].reverse(); // iGJCOE … AOI
   const groups = tiers.map((t) => ({ t, list: clinics.filter((c) => c.tier === t.id) })).filter((g) => g.list.length);
   const groupClinics = groups.flatMap((g) => g.list);
 
@@ -253,17 +279,18 @@ function Heatmap({ fy, hmClinic, onHmClinic, onOpenClinic }) {
       <header className="card-head">
         <div>
           <h3>ผลการตรวจประเมินตามเกณฑ์ COE</h3>
-          <p>ผลการตรวจรายศูนย์ และอัตราการผ่านเกณฑ์แยกตามระดับ · คลิกชื่อศูนย์เพื่อดูรายละเอียด</p>
+          <p>ผลการตรวจรายศูนย์ และอัตราการผ่านเกณฑ์ของศูนย์ที่เลือก · คลิกชื่อศูนย์เพื่อดูรายละเอียด</p>
         </div>
         <div className="hm-tools">
           <label className="slicer">ศูนย์
             <select value={selected} onChange={(e) => onHmClinic(e.target.value)}>
               <option value="all">ทุกศูนย์ ({all.length})</option>
-              {all.map((c) => <option key={c.id} value={c.id}>{c.name} · {TIERS[c.tier].code}</option>)}
+              {all.map((c) => <option key={c.id} value={c.id}>{c.name} · {tierInfo(c.tier).code}</option>)}
             </select>
           </label>
           <div className="legend-row tight">
-            {Object.entries(STATUS).map(([k, v]) => <span key={k}><i className={`sw s-${k}`} />{v.label}</span>)}
+            {/* รอข้อมูล only applies to clinics not yet assigned a tier, which this heatmap leaves out. */}
+            {Object.entries(STATUS).filter(([k]) => k !== "W").map(([k, v]) => <span key={k}><i className={`sw s-${k}`} />{v.label}</span>)}
           </div>
         </div>
       </header>
@@ -274,11 +301,10 @@ function Heatmap({ fy, hmClinic, onHmClinic, onOpenClinic }) {
               <th rowSpan={2} className="hm-crit">เกณฑ์</th>
               <th rowSpan={2} className="hm-method">การประเมิน</th>
               {groups.map((g) => <th key={g.t.id} colSpan={g.list.length} className="hm-group"><TierBadge tier={g.t.id} size="sm" /></th>)}
-              <th colSpan={reqTiers.length} className="hm-group rate">อัตราผ่านเกณฑ์ตามระดับ <small>({clinics.length} ศูนย์ที่เลือก)</small></th>
+              <th rowSpan={2} className="hm-group rate">อัตราผ่านเกณฑ์<small>{clinics.length} ศูนย์ที่เลือก</small></th>
             </tr>
             <tr>
-              {groupClinics.map((c) => <th key={c.id} className="hm-clinic"><button onClick={() => onOpenClinic(c.id)}>{c.name}</button></th>)}
-              {reqTiers.map((t) => <th key={t.id} className="hm-clinic">{t.code}</th>)}
+              {groupClinics.map((c) => <th key={c.id} className="hm-clinic"><button title={c.name} onClick={() => onOpenClinic(c.id)}>{c.name}</button></th>)}
             </tr>
           </thead>
           <tbody>
@@ -288,15 +314,15 @@ function Heatmap({ fy, hmClinic, onHmClinic, onOpenClinic }) {
                 <td className="hm-method">{k.method}</td>
                 {groupClinics.map((c) => {
                   const [st, txt] = c.criteria[k.key];
-                  return <td key={c.id} className={`hm-cell s-${st}`} title={`${c.name} · ${STATUS[st].label}`}>{txt}</td>;
+                  // Colour only; the result text shows on hover.
+                  const detail = `${c.name} · ${k.label}: ${txt} (${STATUS[st].label})`;
+                  return <td key={c.id} className={`hm-cell s-${st}`} title={detail} aria-label={detail} />;
                 })}
-                {reqTiers.map((t) => {
-                  const req = TIER_REQ[k.key][t.id];
-                  if (!req) return <td key={t.id} className="hm-rate na" title={`ไม่ใช่เกณฑ์ของระดับ ${t.code}`}>–</td>;
-                  const res = clinics.map((c) => tierStatus(c, k.key, t.id));
-                  const w = res.filter((s) => s === "W").length;
-                  return <RateCell key={t.id} n={res.filter((s) => s === "P").length} d={clinics.length} req={req} extra={w ? ` · รอข้อมูล ${w}` : ""} />;
-                })}
+                {(() => {
+                  // Share of the selected clinics whose own result for this criterion is ผ่าน.
+                  const passed = clinics.filter((c) => c.criteria[k.key][0] === "P").length;
+                  return <RateCell n={passed} d={clinics.length} />;
+                })()}
               </tr>
             ))}
             <tr className="hm-foot">
@@ -306,11 +332,7 @@ function Heatmap({ fy, hmClinic, onHmClinic, onOpenClinic }) {
                 const s = critSummary(c);
                 return <td key={c.id} className="hm-sum"><b>{pct(s.P, s.total)}%</b><small>{s.P}/{s.total}</small></td>;
               })}
-              {reqTiers.map((t) => {
-                const keys = CRITERIA.filter((k) => TIER_REQ[k.key][t.id]);
-                const met = clinics.reduce((a, c) => a + keys.filter((k) => tierStatus(c, k.key, t.id) === "P").length, 0);
-                return <RateCell key={t.id} n={met} d={keys.length * clinics.length} req={`${keys.length} เกณฑ์`} />;
-              })}
+              <RateCell n={clinics.reduce((a, c) => a + critSummary(c).P, 0)} d={CRITERIA.length * clinics.length} req={`${CRITERIA.length} เกณฑ์`} />
             </tr>
           </tbody>
         </table>

@@ -1,8 +1,9 @@
-import { TIERS, CRITERIA, STATUS } from "../dataset.js";
+import { CRITERIA, STATUS } from "../dataset.js";
+import { tierClass, tierInfo } from "../lib.js";
 
 export function TierBadge({ tier, size = "" }) {
-  const T = TIERS[tier];
-  return <span className={`tier-badge t${tier} ${size}`} title={T.name}>{T.code}</span>;
+  const T = tierInfo(tier);
+  return <span className={`tier-badge ${tierClass(tier)} ${size}`} title={T.name}>{T.code}</span>;
 }
 
 export function Pill({ tone, children }) {
