@@ -22,21 +22,34 @@ The prototype has these views:
 
 The data covers Thai fiscal years 2568–2569. A Thai fiscal year runs from ต.ค. (October) to ก.ย. (September). Pick the year with the selector in the top bar.
 
-This is a design prototype, not a production system. It has no backend: all data is in static JS files.
+This is a design prototype, not a production system. It is built with React and Vite. It has no backend: all data is in static JS files.
 
 ## Project structure
 
 ```
-index.html      Page shell (sidebar, top bar, drawer)
-app.js          App entry: routing and rendering of every view
-data.js         Tiers, audit criteria, clinics, facts and evaluations
-works.js        Works register (CQI, research, innovations) per clinic
-styles.css      All styles
-logo.svg        Medical center logo
-vite.config.js  Vite configuration
+index.html                  HTML shell; React mounts into #root
+vite.config.js              Vite configuration
+src/
+  main.jsx                  Entry point
+  App.jsx                   Layout (sidebar, top bar), hash routing, fiscal-year and drawer state
+  lib.js                    Shared calculations (criteria summaries, tier status, URLs)
+  data.js                   Tiers, audit criteria, clinics, facts and evaluations
+  works.js                  Works register (CQI, research, innovations) per clinic
+  styles.css                All styles
+  logo.svg                  Medical center logo
+  components/
+    common.jsx              Tier badge, pill, icons, criteria bar
+    Evaluation.jsx          Evaluation selectors and evaluation detail, shared by drawer and clinic page
+    Drawer.jsx              Clinic quick-view drawer
+  views/
+    Overview.jsx            Project overview: KPI cards, charts, heatmap
+    Clinics.jsx             Clinic list with filters and sorting
+    ClinicPage.jsx          Clinic detail page and works tab
 ```
 
-To update the dashboard's content, edit `data.js` and `works.js`.
+To update the dashboard's content, edit `src/data.js` and `src/works.js`.
+
+Routing uses the URL hash, with no router library. `#clinics/<id>` (or `#overview/<id>`) opens the clinic drawer on top of that view.
 
 ## Installation
 
