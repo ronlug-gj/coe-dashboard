@@ -15,28 +15,45 @@ COE Monitor shows where each clinic stands on the COE tier ladder and what it st
 
 The prototype has these views:
 
-- **Project overview** (`#overview`): project KPIs, growth charts that compare new COEs with the yearly target, and a heatmap of audit results by clinic and criterion.
-- **All clinics** (`#clinics`): every clinic with its current tier, entry year and how many criteria it has passed, has not yet met, or is waiting on data. You can filter, search and sort the list.
+- **Project overview** (`#overview`): project KPIs, growth charts (click a fiscal year in the monthly chart to drill down to its months), and a heatmap of audit results by clinic and criterion.
+- **All clinics** (`#clinics`): every clinic with its current tier, entry year and how many criteria it has passed and has not yet met. You can filter, search and sort the list.
 - **Clinic detail** (`#clinic/<id>`): the clinic's evaluation history and its results on each criterion.
 - **Clinic works** (`#clinic/<id>/<evaluation>/works`): the clinic's CQI, R2R/research and innovation works.
 
 The data covers Thai fiscal years 2568–2569. A Thai fiscal year runs from ต.ค. (October) to ก.ย. (September). Pick the year with the selector in the top bar.
 
-This is a design prototype, not a production system. It has no backend: all data is in static JS files.
+This is a design prototype, not a production system. It is built with React and Vite. It has no backend: all data is in static JS files.
 
 ## Project structure
 
 ```
-index.html      Page shell (sidebar, top bar, drawer)
-app.js          App entry: routing and rendering of every view
-data.js         Tiers, audit criteria, clinics, facts and evaluations
-works.js        Works register (CQI, research, innovations) per clinic
-styles.css      All styles
-logo.svg        Medical center logo
-vite.config.js  Vite configuration
+index.html                  HTML shell; React mounts into #root
+vite.config.js              Vite configuration
+src/
+  main.jsx                  Entry point
+  dataset.js                Single data entry point for the app (real or demo data)
+  App.jsx                   Layout (sidebar, top bar), hash routing, fiscal-year and drawer state
+  lib.js                    Shared calculations (criteria summaries, tier status, URLs)
+  data.js                   Tiers, audit criteria, clinics, facts and evaluations
+  works.js                  Works register (CQI, research, innovations) per clinic
+  styles.css                All styles
+  logo.svg                  Medical center logo
+  components/
+    common.jsx              Tier badge, pill, icons, criteria bar
+    Evaluation.jsx          Evaluation selectors and evaluation detail, shared by drawer and clinic page
+    Drawer.jsx              Clinic quick-view drawer
+  demo/
+    data.js                 Dummy พ.ค. 2573 dataset (see "Demo data")
+    works.js                Dummy works register matching the demo clinics
+  views/
+    Overview.jsx            Project overview: KPI cards, charts, heatmap
+    Clinics.jsx             Clinic list with filters and sorting
+    ClinicPage.jsx          Clinic detail page and works tab
 ```
 
-To update the dashboard's content, edit `data.js` and `works.js`.
+To update the dashboard's content, edit `src/data.js` and `src/works.js`.
+
+Routing uses the URL hash, with no router library. `#clinics/<id>` (or `#overview/<id>`) opens the clinic drawer on top of that view.
 
 ## Installation
 
@@ -60,6 +77,14 @@ pnpm install
 | `pnpm dev` | Start the dev server with hot reload (http://localhost:5173) |
 | `pnpm build` | Build the production site into `dist/` |
 | `pnpm preview` | Serve the built `dist/` locally to check it |
+| `pnpm dev:demo` | Start the dev server with the dummy demo data (see below) |
+| `pnpm build:demo` | Build the site with the dummy demo data into `dist/` |
+
+### Demo data (พ.ค. 2573)
+
+`src/demo/` holds **dummy data** that shows the dashboard as it might look in พ.ค. 2573 (fiscal year 2573, month 8): 13 clinics, fiscal years 2568–2573, several dated evaluations per clinic, tier promotions, KPI history and a works register. It is invented for demos and is not real evaluation data. In demo mode the top bar shows a "ข้อมูลจำลอง" badge.
+
+Demo mode is chosen at build time (`--mode demo`). `vite.config.js` points the `@data` and `@works` imports at either the real files or `src/demo/`, so each build contains only one dataset. In `src/demo/data.js` you only write each evaluation's statuses, facts and metrics; the criteria texts, tier history and KPI history are derived from them.
 
 ## Deployment
 

@@ -6,41 +6,7 @@
   <title>COE Monitor – ระบบติดตามศูนย์ความเป็นเลิศ</title>
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar">
-      <div class="brand">
-        <img src="logo.svg" alt="ศูนย์การแพทย์กาญจนาภิเษก" class="brand-logo" />
-        <div class="brand-title">COE Monitor</div>
-      </div>
-      <nav class="nav">
-        <a href="#overview" data-route="overview" class="nav-item">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v10H3zM13 3h8v6h-8zM13 11h8v10h-8zM3 15h8v6H3z"/></svg>
-          ภาพรวมโครงการ
-        </a>
-        <a href="#clinics" data-route="clinics" class="nav-item">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4zM4 11h16v2H4zM4 17h16v2H4z"/></svg>
-          คลินิกทั้งหมด
-        </a>
-      </nav>
-    </aside>
-
-    <div class="main">
-      <header class="topbar">
-        <div class="crumbs" id="crumbs"></div>
-        <label class="fy">
-          ปีงบประมาณ
-          <select id="fy">
-            <option>2569</option>
-          </select>
-        </label>
-      </header>
-      <main id="view" class="view"></main>
-    </div>
-  </div>
-
-  <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
-  <aside id="drawer" class="drawer" aria-hidden="true"></aside>
-
-  <script type="module" src="/app.js"></script>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
